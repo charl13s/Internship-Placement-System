@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+// -------------------------------------------------
+// Table 1: The Intern Profile
+// -------------------------------------------------
+model Intern {
+  id         String   @id @default(uuid())
+  clerkId    String   @unique
+  email      String   @unique
+  firstName  String
+  middleName String?  
+  lastName   String
+  phone      String?  // <-- Added for HR contact
+  course     String
+  keySkills  String[] 
+  cvUrl      String?  // <-- Stores the Supabase public URL
+  
+  applications Application[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// -------------------------------------------------
+// Table 2: The Organization (HR Managers)
+// -------------------------------------------------
+model Organization {
+  id          String   @id @default(uuid())
+  clerkId     String   @unique 
+  email       String   @unique
+  name        String   
+  website     String?
+  location    String?  
+  description String?  
+  logoUrl     String?  
+  isVerified  Boolean  @default(false)
+  
+  deletedAt   DateTime? // Soft Delete Timestamp
+  
+  listings    Listing[] 
+  createdAt   DateTime  @default(now())
+}
+
+// -------------------------------------------------
+// Table 3: The Job Listing
+// -------------------------------------------------
+model Listing {
+  id             String   @id @default(uuid())
+  title          String
+  requiredSkills String[]     
+  status         String   @default("OPEN") 
+  closingDate    DateTime? 
+  
+  deletedAt      DateTime? // Soft Delete Timestamp
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  applications   Application[] 
+  createdAt      DateTime     @default(now())
+}
+
+// -------------------------------------------------
+// Table 4: The Application Junction Table
+// -------------------------------------------------
+model Application {
+  id        String   @id @default(uuid())
+  internId  String
+  listingId String
+  status    String   @default("Pending") // "Pending", "Accepted", "Rejected"
+  
+  intern    Intern   @relation(fields: [internId], references: [id])
+  listing   Listing  @relation(fields: [listingId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  // The Composite Unique Constraint: Prevents spamming the "Apply" button
+  @@unique([internId, listingId])
+}
