@@ -1,7 +1,13 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-// This single line tells Clerk to protect your entire application by default
-export default clerkMiddleware();
+// These are the only pages people can see without logging in
+const isPublicRoute = createRouteMatcher(['/'])
+
+export default clerkMiddleware(async (auth, req) => {
+    if (!isPublicRoute(req)) {
+        await auth.protect() // 🚨 Await the promise here!
+    }
+})
 
 export const config = {
     matcher: [
@@ -10,4 +16,4 @@ export const config = {
         // Always run for API routes
         '/(api|trpc)(.*)',
     ],
-};
+}

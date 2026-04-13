@@ -1,117 +1,129 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/db'
 
-const prisma = new PrismaClient()
+// --- DUMMY DATA POOLS ---
+const companies = [
+    "Acme Corp", "Global Dynamics", "TechFlow", "Nairobi Systems", "FinServe Kenya",
+    "CloudSync", "AfriInnovate", "NextGen Solutions", "BlueSky Media", "Quantum Finance",
+    "Apex Health", "Titan AI", "CyberShield", "DevCraft", "DataMinds",
+    "EcoTech", "Urban Logistics", "Stellar Space", "Nexus Banking", "Pioneer Retail"
+]
 
-// --- HELPER DATA ARRAYS ---
-const firstNames = ["James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda", "David", "Elizabeth", "William", "Barbara", "Richard", "Susan", "Joseph", "Jessica", "Thomas", "Sarah", "Charles", "Karen", "Daniel", "Nancy", "Matthew", "Lisa", "Anthony", "Betty", "Mark", "Margaret", "Donald", "Sandra", "Steven", "Ashley", "Paul", "Kimberly", "Andrew", "Emily", "Joshua", "Donna", "Kenneth", "Michelle"]
-const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez", "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson"]
-const courses = ["B.Sc. Computer Science", "B.Sc. Information Technology", "B.Sc. Software Engineering", "B.A. Graphic Design", "B.Sc. Data Science", "B.B.A. Finance", "B.Sc. Cyber Security", "B.Sc. Business Information Systems"]
-const skillsPool = ["React", "Node.js", "Python", "Java", "C++", "Figma", "UI/UX", "SQL", "PostgreSQL", "MongoDB", "AWS", "Docker", "TypeScript", "Next.js", "Tailwind CSS", "Machine Learning", "Data Analysis", "Pandas", "Cybersecurity", "Network Routing"]
-const companyPrefixes = ["Apex", "Quantum", "Nexus", "Starlight", "Horizon", "Pinnacle", "Vanguard", "Zeith", "Aether", "Lumina", "Nova", "Pulse", "Vertex", "Echo", "Flux"]
-const companySuffixes = ["Technologies", "Solutions", "Systems", "Studios", "Labs", "Digital", "Innovations", "Group", "Networks", "Software"]
-const jobTitles = ["Frontend Intern", "Backend Intern", "Fullstack Intern", "UI/UX Design Intern", "Data Analyst Intern", "Product Management Intern", "DevOps Intern", "Cybersecurity Intern", "QA Testing Intern", "Cloud Architecture Intern"]
+const locations = ["Nairobi, Kenya", "Remote", "London, UK", "New York, NY", "Hybrid", "San Francisco, CA"]
 
-// --- HELPER FUNCTIONS ---
-const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min)
-const randomItem = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)]
-const randomSubset = (arr: any[], count: number) => {
+const jobTitles = [
+    "Software Engineering Intern", "Frontend Developer Intern", "Backend Developer Intern",
+    "Data Science Intern", "Product Management Intern", "Cybersecurity Analyst Intern",
+    "UX/UI Design Intern", "Cloud Architecture Intern", "Mobile App (Android) Intern",
+    "Machine Learning Intern", "Marketing Analytics Intern", "DevOps Engineering Intern",
+    "Financial Analyst Intern", "Blockchain Developer Intern", "QA Testing Intern"
+]
+
+const skillsPool = [
+    "React", "TypeScript", "Node.js", "Python", "Java", "C++", "AWS", "Docker",
+    "Figma", "UI/UX", "Data Analysis", "SQL", "Machine Learning", "Go", "Rust",
+    "Kotlin", "Swift", "Cybersecurity", "Agile", "Excel", "Financial Modeling"
+]
+
+const firstNames = ["James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda", "David", "Elizabeth", "Kevin", "Brian", "Ian", "Mercy", "Faith", "Samuel", "Grace", "Daniel", "Sarah", "Alex"]
+const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Mwangi", "Otieno", "Mutua", "Wanjiku", "Kimani", "Ochieng", "Njoroge", "Achieng", "Kamau"]
+const courses = ["Computer Science", "Informatics", "Business Administration", "Data Science", "Software Engineering", "Information Technology", "Mathematics"]
+
+// Helper to get random items
+const getRandom = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)]
+const getRandomMultiple = (arr: any[], count: number) => {
     const shuffled = [...arr].sort(() => 0.5 - Math.random())
     return shuffled.slice(0, count)
 }
-const randomDate = (start: Date, end: Date) => new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()))
 
 async function main() {
-    console.log("🧹 Sweeping old database records...")
-
-    // 1. Wipe existing data (Respecting foreign keys)
+    console.log("🧹 Sweeping the database clean...")
+    // Delete in reverse order to avoid foreign key constraint errors
     await prisma.application.deleteMany()
     await prisma.listing.deleteMany()
-    // 🚨 FIXED: Only delete dummy orgs and interns
-    await prisma.organization.deleteMany({ where: { email: { endsWith: '@org.dummy.com' } } })
-    await prisma.intern.deleteMany({ where: { email: { endsWith: '@intern.dummy.com' } } })
+    await prisma.intern.deleteMany()
+    await prisma.organization.deleteMany()
 
-    console.log("🏭 Generating 50 Organizations...")
-    const orgData = Array.from({ length: 50 }).map((_, i) => ({
-        clerkId: `org_dummy_${i}_${Date.now()}`,
-        // 🚨 FIXED: Ensuring email domain is exactly @org.dummy.com
-        email: `contact${i}_${randomItem(companyPrefixes).toLowerCase()}@org.dummy.com`,
-        name: `${randomItem(companyPrefixes)} ${randomItem(companySuffixes)}`,
-        location: randomItem(["Remote", "Nairobi, Kenya", "Hybrid", "London, UK", "New York, USA"]),
-        website: `https://www.example${i}.com`,
-        description: "A leading innovator in the technology sector looking for bright minds to join our internship program.",
-        isVerified: Math.random() > 0.2
-    }))
-    await prisma.organization.createMany({ data: orgData })
-    // 🚨 FIXED: Looking for the exact domain we just created
-    const createdOrgs = await prisma.organization.findMany({ where: { email: { endsWith: '@org.dummy.com' } } })
+    console.log("🏢 Creating 20 Organizations...")
+    const orgIds: string[] = []
+    for (let i = 0; i < 20; i++) {
+        const org = await prisma.organization.create({
+            data: {
+                clerkId: `fake_org_${i}_${Date.now()}`,
+                name: companies[i],
+                email: `hr@${companies[i].replace(/\s+/g, '').toLowerCase()}.com`,
+                website: `https://${companies[i].replace(/\s+/g, '').toLowerCase()}.com`,
+                location: getRandom(locations),
+                description: `We are ${companies[i]}, a leading company looking for bright minds to join our internship program. We value innovation, hard work, and continuous learning.`,
+                isVerified: Math.random() > 0.2, // 80% chance of being verified
+            }
+        })
+        orgIds.push(org.id)
+    }
 
-    console.log("📝 Generating 150 Job Listings...")
-    const listingData = Array.from({ length: 150 }).map(() => {
-        const isClosed = Math.random() > 0.8 // 20% of jobs are closed
-        return {
-            title: randomItem(jobTitles),
-            requiredSkills: randomSubset(skillsPool, randomInt(3, 6)),
-            status: isClosed ? "CLOSED" : "OPEN",
-            closingDate: isClosed
-                ? randomDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), new Date())
-                : randomDate(new Date(), new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)),
-            organizationId: randomItem(createdOrgs).id
-        }
-    })
-    await prisma.listing.createMany({ data: listingData })
-    const createdListings = await prisma.listing.findMany()
+    console.log("💼 Creating 80 Job Listings...")
+    const listingIds: string[] = []
+    for (let i = 0; i < 80; i++) {
+        // Generate a future closing date between 5 and 60 days from now
+        const futureDate = new Date()
+        futureDate.setDate(futureDate.getDate() + Math.floor(Math.random() * 55) + 5)
 
-    console.log("🎓 Generating 300 Interns...")
-    const internData = Array.from({ length: 300 }).map((_, i) => {
-        const first = randomItem(firstNames)
-        const last = randomItem(lastNames)
-        return {
-            clerkId: `intern_dummy_${i}_${Date.now()}`,
-            email: `${first.toLowerCase()}.${last.toLowerCase()}${i}@intern.dummy.com`,
-            firstName: first,
-            lastName: last,
-            phone: `+254 7${randomInt(10, 99)} ${randomInt(100, 999)} ${randomInt(100, 999)}`,
-            course: randomItem(courses),
-            keySkills: randomSubset(skillsPool, randomInt(3, 7)),
-            cvUrl: "https://example.com/dummy-cv.pdf"
-        }
-    })
+        const listing = await prisma.listing.create({
+            data: {
+                title: getRandom(jobTitles),
+                requiredSkills: getRandomMultiple(skillsPool, Math.floor(Math.random() * 3) + 3), // 3 to 5 skills
+                closingDate: futureDate,
+                status: "OPEN",
+                organizationId: getRandom(orgIds)
+            }
+        })
+        listingIds.push(listing.id)
+    }
 
-    await prisma.intern.createMany({ data: internData.slice(0, 150) })
-    await prisma.intern.createMany({ data: internData.slice(150, 300) })
-    const createdInterns = await prisma.intern.findMany({ where: { email: { endsWith: '@intern.dummy.com' } } })
+    console.log("🎓 Creating 50 Student Interns...")
+    const internIds: string[] = []
+    for (let i = 0; i < 50; i++) {
+        const fName = getRandom(firstNames)
+        const lName = getRandom(lastNames)
+        const intern = await prisma.intern.create({
+            data: {
+                clerkId: `fake_student_${i}_${Date.now()}`,
+                firstName: fName,
+                lastName: lName,
+                email: `${fName.toLowerCase()}.${lName.toLowerCase()}${i}@student.university.edu`,
+                course: getRandom(courses),
+                keySkills: getRandomMultiple(skillsPool, Math.floor(Math.random() * 4) + 2), // 2 to 5 skills
+            }
+        })
+        internIds.push(intern.id)
+    }
 
-    console.log("🚀 Simulating ~1,000 Job Applications...")
-    const applicationData: { internId: string, listingId: string, status: string }[] = []
-    const statuses = ["Pending", "Pending", "Pending", "Accepted", "Rejected"]
+    console.log("📝 Generating Applications...")
+    let applicationCount = 0
+    for (const internId of internIds) {
+        // Each intern applies to 3-6 random jobs
+        const jobsToApply = getRandomMultiple(listingIds, Math.floor(Math.random() * 4) + 3)
 
-    for (const intern of createdInterns) {
-        const jobsToApplyTo = randomSubset(createdListings, randomInt(2, 5))
-        for (const job of jobsToApplyTo) {
-            applicationData.push({
-                internId: intern.id,
-                listingId: job.id,
-                status: randomItem(statuses)
+        for (const listingId of jobsToApply) {
+            // Randomly assign statuses (mostly pending, some rejected/accepted)
+            const rand = Math.random()
+            const status = rand > 0.85 ? "Accepted" : rand > 0.7 ? "Rejected" : "Pending"
+
+            await prisma.application.create({
+                data: {
+                    internId: internId,
+                    listingId: listingId,
+                    status: status
+                }
             })
+            applicationCount++
         }
     }
 
-    const chunkSize = 500;
-    for (let i = 0; i < applicationData.length; i += chunkSize) {
-        const chunk = applicationData.slice(i, i + chunkSize);
-        await prisma.application.createMany({ data: chunk })
-    }
-
-    console.log(`✅ DONE! Successfully seeded:`)
-    console.log(`   🏢 ${createdOrgs.length} Organizations`)
-    console.log(`   📋 ${createdListings.length} Listings`)
-    console.log(`   🎓 ${createdInterns.length} Interns`)
-    console.log(`   📨 ${applicationData.length} Applications`)
+    console.log(`✅ Seed complete! Generated ${applicationCount} applications across 80 jobs.`)
 }
 
 main()
     .catch((e) => {
-        console.error("❌ Seeding failed:")
         console.error(e)
         process.exit(1)
     })

@@ -227,7 +227,7 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
                                     <form action={applyForJob}>
                                         <Button type="submit" className="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-bold py-6 text-lg transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2">
                                             <Zap className="w-5 h-5 fill-current" />
-                                            1-Click Apply Now
+                                            Apply
                                         </Button>
                                     </form>
                                 )}

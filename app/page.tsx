@@ -2,6 +2,7 @@ import { currentUser } from "@clerk/nextjs/server"
 import { UserButton, Show, SignInButton } from "@clerk/nextjs"
 import { prisma } from "@/lib/db"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { Building2, Calendar, MapPin, Search, Sparkles, X, ChevronLeft, ChevronRight } from "lucide-react"
 
 // Shadcn UI
@@ -19,15 +20,34 @@ export default async function StudentDiscoveryFeed({
 }) {
   const user = await currentUser()
 
-  // 1. Await params and extract Search & Pagination values
+  // 🚨 THE TRAFFIC CONTROLLER 🚨
+  if (user) {
+    // 1. Check if they are a student
+    const isIntern = await prisma.intern.findUnique({ where: { clerkId: user.id } })
+
+    if (!isIntern) {
+      // 2. If not a student, check if they are an HR Manager
+      const isOrg = await prisma.organization.findUnique({ where: { clerkId: user.id } })
+
+      if (isOrg) {
+        // They are HR! Get them off the student feed.
+        redirect("/hr-dashboard")
+      } else {
+        // 3. They are neither! Brand new user. Force them to pick a path.
+        redirect("/onboarding")
+      }
+    }
+  }
+
+  // 🔍 URL PARAMETERS (Search & Pagination)
   const resolvedParams = await searchParams
   const query = typeof resolvedParams.q === 'string' ? resolvedParams.q : ""
-
-  // Parse the page number (default to 1 if it doesn't exist)
   const currentPage = parseInt(typeof resolvedParams.page === 'string' ? resolvedParams.page : '1', 10) || 1
-  const ITEMS_PER_PAGE = 6 // Show 6 jobs per page
 
-  // THE AUTO-SWEEP
+  // Set to 9 for a perfect 3x3 desktop grid
+  const ITEMS_PER_PAGE = 9
+
+  // 🧹 THE AUTO-SWEEP
   await prisma.listing.updateMany({
     where: {
       status: "OPEN",
@@ -36,7 +56,7 @@ export default async function StudentDiscoveryFeed({
     data: { status: "CLOSED" }
   })
 
-  // 2. Build the exact filter criteria so we can use it for both Data and Counting
+  // ⚙️ BUILD FILTER CRITERIA
   const whereClause = {
     status: "OPEN",
     deletedAt: null,
@@ -48,22 +68,20 @@ export default async function StudentDiscoveryFeed({
     } : {})
   }
 
-  // 3. FETCH JOBS & TOTAL COUNT IN PARALLEL
+  // 🚀 FETCH JOBS & COUNT IN PARALLEL
   const [jobs, totalJobs] = await Promise.all([
     prisma.listing.findMany({
       where: whereClause,
       orderBy: { createdAt: 'desc' },
       include: { organization: true },
-      skip: (currentPage - 1) * ITEMS_PER_PAGE, // Skip the jobs from previous pages
-      take: ITEMS_PER_PAGE,                     // Take exactly 6 jobs
+      skip: (currentPage - 1) * ITEMS_PER_PAGE,
+      take: ITEMS_PER_PAGE,
     }),
-    prisma.listing.count({ where: whereClause }) // Count how many total jobs match the filter
+    prisma.listing.count({ where: whereClause })
   ])
 
-  // Calculate total pages needed
   const totalPages = Math.ceil(totalJobs / ITEMS_PER_PAGE)
 
-  // Helper function to build pagination URLs without losing the search query
   const createPageUrl = (pageNumber: number) => {
     const params = new URLSearchParams()
     if (query) params.set("q", query)
@@ -98,7 +116,8 @@ export default async function StudentDiscoveryFeed({
             </Show>
 
             <Show when="signed-out">
-              <SignInButton mode="modal">
+              {/* 🚨 Removed mode="modal" so it does a full, hard redirect */}
+              <SignInButton forceRedirectUrl="/">
                 <Button variant="outline" className="bg-transparent text-white border-neutral-600 hover:bg-neutral-800 hover:text-white transition-colors">
                   Log In
                 </Button>
@@ -114,13 +133,12 @@ export default async function StudentDiscoveryFeed({
           </Badge>
 
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-4 max-w-2xl">
-            Launch your career with the top companies in tech.
+            Launch your career with industry-leading organizations.
           </h1>
           <p className="text-neutral-400 text-lg mb-8 max-w-xl">
             Find and apply to verified internships tailored perfectly to your university course and skill set.
           </p>
 
-          {/* THE SEARCH FORM */}
           <form action="/" method="GET" className="w-full max-w-2xl flex items-center gap-2 bg-white p-2 rounded-xl shadow-lg focus-within:ring-2 focus-within:ring-amber-500 transition-all">
             <div className="flex items-center px-3 text-neutral-400">
               <Search className="w-5 h-5" />
@@ -229,7 +247,7 @@ export default async function StudentDiscoveryFeed({
               ))}
             </div>
 
-            {/* 🚨 PAGINATION CONTROLS 🚨 */}
+            {/* PAGINATION CONTROLS */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 border-t border-neutral-200 pt-8">
                 <Button
