@@ -1,10 +1,11 @@
 import Link from "next/link"
 import { GraduationCap, Building2, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-
+import SiteHeader from "@/components/SiteHeader"
 export default function OnboardingSelectionPage() {
     return (
         <main className="min-h-screen bg-[#FAFAFA] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] flex items-center justify-center p-6 relative">
+            <SiteHeader variant="onboarding" />
             <div className="w-full max-w-4xl relative z-10">
 
                 {/* Header */}
