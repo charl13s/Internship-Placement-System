@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware # 🚨 THIS IS THE CRITICAL MISSING LINE
 from pydantic import BaseModel
 from typing import List, TypedDict
 import json
 from dotenv import load_dotenv
-from fastapi.middleware.cors import CORSMiddleware
+
 # LangGraph & Gemini Imports
 from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -14,15 +15,16 @@ load_dotenv()
 # Initialize FastAPI server
 app = FastAPI()
 
+# 🚨 THIS OPENS THE GATES FOR NEXT.JS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",  # Your Next.js local development server
+        "http://localhost:3000",
         "http://127.0.0.1:3000"
     ], 
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods, including the POST request we need
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 # ---------------------------------------------------------
 # PHASE 1: DEFINE THE CLIPBOARD (The State)
