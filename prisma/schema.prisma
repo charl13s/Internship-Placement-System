@@ -71,7 +71,9 @@ model Application {
   internId  String
   listingId String
   status    String   @default("Pending") // "Pending", "Accepted", "Rejected"
-  
+
+  matchScore       Int?     // Stores the 0-100 percentage
+  extractedSkills  String[]
   intern    Intern   @relation(fields: [internId], references: [id])
   listing   Listing  @relation(fields: [listingId], references: [id])
 

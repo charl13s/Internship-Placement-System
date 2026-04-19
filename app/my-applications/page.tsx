@@ -9,6 +9,7 @@ import { UserButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { UpdateCVButton } from "@/components/UpdateCVButton"
 
 export const dynamic = "force-dynamic"
 
@@ -154,7 +155,13 @@ export default async function MyApplicationsPage() {
                                         </div>
 
                                         {/* Right Side: Status & Action */}
-                                        <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full border-t sm:border-0 border-neutral-100 pt-5 sm:pt-0 mt-3 sm:mt-0">
+                                        <div className="flex items-center justify-between sm:justify-end gap-4 sm:w-auto w-full border-t sm:border-0 border-neutral-100 pt-5 sm:pt-0 mt-3 sm:mt-0">
+
+                                            {/* If the application is still Pending, show the Update button! */}
+                                            {app.status === "Pending" && (
+                                                <UpdateCVButton applicationId={app.id} currentCvUrl={intern.cvUrl} />
+                                            )}
+
                                             {getStatusBadge(app.status)}
 
                                             <Button asChild variant="ghost" size="icon" className="text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 rounded-full h-10 w-10 hidden sm:flex">
