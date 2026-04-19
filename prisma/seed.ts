@@ -1,125 +1,176 @@
-import { prisma } from '../lib/db'
+import "dotenv/config";
+import { PrismaClient } from '@prisma/client'
+import { Pool } from 'pg'
+import { PrismaPg } from '@prisma/adapter-pg'
 
-// --- DUMMY DATA POOLS ---
-const companies = [
-    "Acme Corp", "Global Dynamics", "TechFlow", "Nairobi Systems", "FinServe Kenya",
-    "CloudSync", "AfriInnovate", "NextGen Solutions", "BlueSky Media", "Quantum Finance",
-    "Apex Health", "Titan AI", "CyberShield", "DevCraft", "DataMinds",
-    "EcoTech", "Urban Logistics", "Stellar Space", "Nexus Banking", "Pioneer Retail"
-]
+// 1. Initialize the PostgreSQL connection pool
+const connectionString = process.env.DATABASE_URL;
+const pool = new Pool({ connectionString });
 
-const locations = ["Nairobi, Kenya", "Remote", "London, UK", "New York, NY", "Hybrid", "San Francisco, CA"]
+// 2. Wrap it in the Prisma Adapter
+const adapter = new PrismaPg(pool);
 
-const jobTitles = [
-    "Software Engineering Intern", "Frontend Developer Intern", "Backend Developer Intern",
-    "Data Science Intern", "Product Management Intern", "Cybersecurity Analyst Intern",
-    "UX/UI Design Intern", "Cloud Architecture Intern", "Mobile App (Android) Intern",
-    "Machine Learning Intern", "Marketing Analytics Intern", "DevOps Engineering Intern",
-    "Financial Analyst Intern", "Blockchain Developer Intern", "QA Testing Intern"
-]
+// 3. Pass the adapter to the Prisma Client
+const prisma = new PrismaClient({ adapter });
 
-const skillsPool = [
-    "React", "TypeScript", "Node.js", "Python", "Java", "C++", "AWS", "Docker",
-    "Figma", "UI/UX", "Data Analysis", "SQL", "Machine Learning", "Go", "Rust",
-    "Kotlin", "Swift", "Cybersecurity", "Agile", "Excel", "Financial Modeling"
-]
+// --- DATA DICTIONARIES FOR GENERATION ---
+const firstNames = ["James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda", "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica", "Thomas", "Sarah", "Charles", "Karen"]
+const lastNames = ["Kamau", "Wanjiku", "Ochieng", "Kiprono", "Mutua", "Njeri", "Odhiambo", "Akinyi", "Maina", "Mwangi", "Njoroge", "Muthoni", "Kariuki", "Nyongesa", "Oluoch"]
+const courses = ["Computer Science", "Software Engineering", "Informatics and Computer Science", "Data Science", "Cybersecurity", "Information Technology", "Business Information Systems"]
+const techSkills = ["React", "Node.js", "Python", "Java", "Kotlin", "Firebase", "AWS", "Docker", "PostgreSQL", "MongoDB", "TypeScript", "Tailwind CSS", "Figma", "Git", "C++", "C#", ".NET", "Vue.js", "Angular", "GraphQL", "Redis", "Linux"]
+const companyNames = ["Safaricom", "Equity Group", "Cellulant", "Andela", "Microsoft ADC", "Google Africa", "Twiga Foods", "Sendy", "Little App", "Pesapal"]
+const jobTitles = ["Frontend Engineer Intern", "Backend Developer Intern", "Fullstack Intern", "Data Science Intern", "Cloud DevOps Intern", "Mobile App Intern (Android)", "UI/UX Design Intern", "Security Analyst Intern"]
 
-const firstNames = ["James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda", "David", "Elizabeth", "Kevin", "Brian", "Ian", "Mercy", "Faith", "Samuel", "Grace", "Daniel", "Sarah", "Alex"]
-const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Mwangi", "Otieno", "Mutua", "Wanjiku", "Kimani", "Ochieng", "Njoroge", "Achieng", "Kamau"]
-const courses = ["Computer Science", "Informatics", "Business Administration", "Data Science", "Software Engineering", "Information Technology", "Mathematics"]
-
-// Helper to get random items
-const getRandom = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)]
-const getRandomMultiple = (arr: any[], count: number) => {
+// Helper: Get random items from an array
+function getRandomItems(arr: string[], count: number) {
     const shuffled = [...arr].sort(() => 0.5 - Math.random())
     return shuffled.slice(0, count)
 }
 
+// Helper: Get a random element from an array
+function getRandom(arr: string[]) {
+    return arr[Math.floor(Math.random() * arr.length)]
+}
+
 async function main() {
-    console.log("🧹 Sweeping the database clean...")
-    // Delete in reverse order to avoid foreign key constraint errors
+    console.log('🧹 Wiping existing database...')
     await prisma.application.deleteMany()
     await prisma.listing.deleteMany()
     await prisma.intern.deleteMany()
     await prisma.organization.deleteMany()
 
-    console.log("🏢 Creating 20 Organizations...")
-    const orgIds: string[] = []
-    for (let i = 0; i < 20; i++) {
+    // ---------------------------------------------------------
+    // 1. CREATE ORGANIZATIONS
+    // ---------------------------------------------------------
+    console.log('🏢 Generating Organizations...')
+    const organizations = []
+
+    // Create YOUR specific organization first so you can log in easily
+    const myOrg = await prisma.organization.create({
+        data: {
+            clerkId: 'YOUR_CLERK_ID_HERE', // <--- REPLACE THIS LATER
+            email: 'hr@mycompany.com',
+            name: 'Elevate Tech (My Company)',
+            website: 'https://elevatetech.com',
+            location: 'Nairobi, Kenya',
+            description: 'This is my primary testing organization.',
+            isVerified: true,
+        }
+    })
+    organizations.push(myOrg)
+
+    // Generate 9 more random organizations
+    for (let i = 0; i < 9; i++) {
         const org = await prisma.organization.create({
             data: {
-                clerkId: `fake_org_${i}_${Date.now()}`,
-                name: companies[i],
-                email: `hr@${companies[i].replace(/\s+/g, '').toLowerCase()}.com`,
-                website: `https://${companies[i].replace(/\s+/g, '').toLowerCase()}.com`,
-                location: getRandom(locations),
-                description: `We are ${companies[i]}, a leading company looking for bright minds to join our internship program. We value innovation, hard work, and continuous learning.`,
-                isVerified: Math.random() > 0.2, // 80% chance of being verified
+                clerkId: `org_random_${i}`,
+                email: `hr@${companyNames[i].toLowerCase().replace(/\s/g, '')}.com`,
+                name: companyNames[i],
+                location: 'Nairobi, Kenya',
+                isVerified: true,
             }
         })
-        orgIds.push(org.id)
+        organizations.push(org)
     }
 
-    console.log("💼 Creating 80 Job Listings...")
-    const listingIds: string[] = []
-    for (let i = 0; i < 80; i++) {
-        // Generate a future closing date between 5 and 60 days from now
-        const futureDate = new Date()
-        futureDate.setDate(futureDate.getDate() + Math.floor(Math.random() * 55) + 5)
-
-        const listing = await prisma.listing.create({
-            data: {
-                title: getRandom(jobTitles),
-                requiredSkills: getRandomMultiple(skillsPool, Math.floor(Math.random() * 3) + 3), // 3 to 5 skills
-                closingDate: futureDate,
-                status: "OPEN",
-                organizationId: getRandom(orgIds)
-            }
-        })
-        listingIds.push(listing.id)
-    }
-
-    console.log("🎓 Creating 50 Student Interns...")
-    const internIds: string[] = []
-    for (let i = 0; i < 50; i++) {
-        const fName = getRandom(firstNames)
-        const lName = getRandom(lastNames)
-        const intern = await prisma.intern.create({
-            data: {
-                clerkId: `fake_student_${i}_${Date.now()}`,
-                firstName: fName,
-                lastName: lName,
-                email: `${fName.toLowerCase()}.${lName.toLowerCase()}${i}@student.university.edu`,
-                course: getRandom(courses),
-                keySkills: getRandomMultiple(skillsPool, Math.floor(Math.random() * 4) + 2), // 2 to 5 skills
-            }
-        })
-        internIds.push(intern.id)
-    }
-
-    console.log("📝 Generating Applications...")
-    let applicationCount = 0
-    for (const internId of internIds) {
-        // Each intern applies to 3-6 random jobs
-        const jobsToApply = getRandomMultiple(listingIds, Math.floor(Math.random() * 4) + 3)
-
-        for (const listingId of jobsToApply) {
-            // Randomly assign statuses (mostly pending, some rejected/accepted)
-            const rand = Math.random()
-            const status = rand > 0.85 ? "Accepted" : rand > 0.7 ? "Rejected" : "Pending"
-
-            await prisma.application.create({
+    // ---------------------------------------------------------
+    // 2. CREATE JOB LISTINGS
+    // ---------------------------------------------------------
+    console.log('💼 Generating Job Listings...')
+    const listings = []
+    for (const org of organizations) {
+        // Each organization gets 3 random job listings
+        for (let i = 0; i < 3; i++) {
+            const required = getRandomItems(techSkills, Math.floor(Math.random() * 3) + 3) // 3 to 5 skills
+            const listing = await prisma.listing.create({
                 data: {
-                    internId: internId,
-                    listingId: listingId,
-                    status: status
+                    title: getRandom(jobTitles),
+                    requiredSkills: required,
+                    status: 'OPEN',
+                    organizationId: org.id,
+                    closingDate: new Date('2026-12-31'),
                 }
             })
-            applicationCount++
+            listings.push(listing)
         }
     }
 
-    console.log(`✅ Seed complete! Generated ${applicationCount} applications across 80 jobs.`)
+    // ---------------------------------------------------------
+    // 3. CREATE INTERNS
+    // ---------------------------------------------------------
+    console.log('🎓 Generating 150 Students...')
+    const interns = []
+    for (let i = 0; i < 150; i++) {
+        const skills = getRandomItems(techSkills, Math.floor(Math.random() * 5) + 3) // 3 to 7 skills
+        const intern = await prisma.intern.create({
+            data: {
+                clerkId: `intern_user_${i}`,
+                email: `student${i}@university.edu`,
+                firstName: getRandom(firstNames),
+                lastName: getRandom(lastNames),
+                course: getRandom(courses),
+                keySkills: skills,
+                cvUrl: 'https://fake-url.com/cv.pdf',
+            }
+        })
+        interns.push(intern)
+    }
+
+    // ---------------------------------------------------------
+    // 4. CREATE APPLICATIONS (The Simulation)
+    // ---------------------------------------------------------
+    console.log('🚀 Simulating hundreds of Job Applications...')
+
+    let totalApplications = 0;
+
+    for (const listing of listings) {
+        // Pick 15 to 30 random students to apply to this specific job
+        const applicants = getRandomItems(interns.map(i => i.id), Math.floor(Math.random() * 15) + 15)
+
+        for (const internId of applicants) {
+            // Find the intern to calculate their exact fake AI score
+            const intern = interns.find(i => i.id === internId)!
+
+            // SIMULATE THE AI CALCULATION
+            const jobUpper = listing.requiredSkills.map(s => s.toUpperCase())
+            const studentUpper = intern.keySkills.map(s => s.toUpperCase())
+
+            let matches = 0
+            const extracted: string[] = []
+
+            // Determine match score exactly how the Python server does it
+            for (const req of jobUpper) {
+                if (studentUpper.includes(req)) {
+                    matches++
+                    // We add the properly capitalized original string to the extracted array
+                    extracted.push(listing.requiredSkills[jobUpper.indexOf(req)])
+                }
+            }
+            // Throw in a random extra skill they have just to make the UI look realistic
+            extracted.push(intern.keySkills[0])
+
+            const matchScore = Math.round((matches / listing.requiredSkills.length) * 100)
+
+            // Randomize status slightly (mostly Pending, some Accepted/Rejected)
+            const statusRoll = Math.random()
+            let status = 'Pending'
+            if (statusRoll > 0.85) status = 'Accepted'
+            else if (statusRoll > 0.70) status = 'Rejected'
+
+            await prisma.application.create({
+                data: {
+                    listingId: listing.id,
+                    internId: intern.id,
+                    status: status,
+                    matchScore: matchScore,
+                    extractedSkills: [...new Set(extracted)], // Ensure no duplicates
+                }
+            })
+            totalApplications++
+        }
+    }
+
+    console.log(`✅ SUCCESS! Generated ${organizations.length} Orgs, ${listings.length} Jobs, ${interns.length} Students, and ${totalApplications} AI-Scored Applications.`)
 }
 
 main()

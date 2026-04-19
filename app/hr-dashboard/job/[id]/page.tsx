@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 import Link from "next/link"
 import { revalidatePath } from "next/cache"
 import DashboardShell from "@/components/DashboardShell"
-import { ArrowLeft, Check, X, Mail, GraduationCap, SearchX } from "lucide-react"
+import { ArrowLeft, Check, X, Mail, GraduationCap, SearchX, Sparkles } from "lucide-react"
 
 // Shadcn UI Components
 import { Button } from "@/components/ui/button"
@@ -28,7 +28,11 @@ export default async function JobPipelinePage({ params }: { params: { Id: string
         include: {
             applications: {
                 include: { intern: true },
-                orderBy: { createdAt: 'desc' }
+                // 🧠 AI MAGIC: Sort by Match Score first, then by date applied
+                orderBy: [
+                    { matchScore: 'desc' },
+                    { createdAt: 'desc' }
+                ]
             }
         }
     })
@@ -74,7 +78,7 @@ export default async function JobPipelinePage({ params }: { params: { Id: string
             <Card>
                 <CardHeader className="bg-neutral-50/50 border-b pb-4">
                     <CardTitle>Applicant Pool</CardTitle>
-                    <CardDescription>Review and manage incoming applications for this role.</CardDescription>
+                    <CardDescription>Review and manage incoming applications. AI auto-sorts your best matches to the top.</CardDescription>
                 </CardHeader>
 
                 {job.applications.length === 0 ? (
@@ -87,9 +91,10 @@ export default async function JobPipelinePage({ params }: { params: { Id: string
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-neutral-50 hover:bg-neutral-50">
-                                <TableHead className="w-[300px] py-4">Student Candidate</TableHead>
+                                <TableHead className="w-[250px] py-4">Student Candidate</TableHead>
                                 <TableHead className="py-4">Contact</TableHead>
                                 <TableHead className="py-4">Course / Major</TableHead>
+                                <TableHead className="text-center py-4">AI Score</TableHead>
                                 <TableHead className="py-4">Status</TableHead>
                                 <TableHead className="text-center py-4">Actions</TableHead>
                             </TableRow>
@@ -124,18 +129,19 @@ export default async function JobPipelinePage({ params }: { params: { Id: string
                                                         <p className="text-xs text-neutral-500 flex items-center gap-1 mt-1">
                                                             <GraduationCap className="w-3 h-3" /> {app.intern.course}
                                                         </p>
-                                                        {app.intern.keySkills && app.intern.keySkills.length > 0 && (
+
+                                                        {/* 🧠 AI MAGIC: Show what the AI verified from the CV */}
+                                                        {app.extractedSkills && app.extractedSkills.length > 0 && (
                                                             <div className="pt-4 mt-4 border-t border-neutral-100">
-                                                                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Top Skills</p>
+                                                                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                                                    <Sparkles className="w-3 h-3" /> Verified by AI
+                                                                </p>
                                                                 <div className="flex flex-wrap gap-1">
-                                                                    {app.intern.keySkills.slice(0, 5).map((skill: string) => (
-                                                                        <Badge key={skill} variant="secondary" className="text-[10px] px-1.5 py-0 bg-neutral-100 text-neutral-600 hover:bg-neutral-100">
+                                                                    {app.extractedSkills.map((skill: string) => (
+                                                                        <Badge key={skill} variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-50">
                                                                             {skill}
                                                                         </Badge>
                                                                     ))}
-                                                                    {app.intern.keySkills.length > 5 && (
-                                                                        <span className="text-[10px] text-neutral-400 pl-1">+{app.intern.keySkills.length - 5}</span>
-                                                                    )}
                                                                 </div>
                                                             </div>
                                                         )}
@@ -159,6 +165,20 @@ export default async function JobPipelinePage({ params }: { params: { Id: string
                                             <GraduationCap className="w-4 h-4 text-neutral-400" />
                                             {app.intern.course}
                                         </div>
+                                    </TableCell>
+
+                                    {/* 🧠 AI MAGIC: Visual Match Score Column */}
+                                    <TableCell className="py-4 text-center">
+                                        {app.matchScore !== null ? (
+                                            <Badge className={`shadow-none px-3 py-1 font-bold ${app.matchScore >= 80 ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                                                    app.matchScore >= 50 ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                                        'bg-red-100 text-red-800 border-red-200'
+                                                }`}>
+                                                {app.matchScore}% Match
+                                            </Badge>
+                                        ) : (
+                                            <span className="text-xs text-neutral-400 font-medium">Calculating...</span>
+                                        )}
                                     </TableCell>
 
                                     <TableCell className="py-4">

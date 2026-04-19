@@ -41,6 +41,7 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
     }
 
     // 3. THE 1-CLICK APPLY SERVER ACTION
+    // 3. THE 1-CLICK APPLY SERVER ACTION
     async function applyForJob() {
         "use server"
         const currentUserObj = await currentUser()
@@ -52,15 +53,50 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
 
         if (!currentIntern) redirect("/student-onboarding")
 
+        // We must ensure they have a CV uploaded before the AI can read it!
+        if (!currentIntern.cvUrl) {
+            throw new Error("You must upload a CV to your profile before applying.");
+        }
+
+        let finalMatchScore = null;
+        let aiExtractedSkills: string[] = [];
+
+        // 🧠 Call the Python AI Engine!
+        try {
+            const aiResponse = await fetch("http://127.0.0.1:8000/api/applications/screen", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    internId: currentIntern.id,
+                    cvUrl: currentIntern.cvUrl,
+                    requiredSkills: job!.requiredSkills
+                })
+            });
+
+            if (aiResponse.ok) {
+                const aiData = await aiResponse.json();
+                finalMatchScore = aiData.matchScore;
+                aiExtractedSkills = aiData.extractedSkills;
+            } else {
+                console.error("AI Engine returned an error status.");
+            }
+        } catch (error) {
+            console.error("Could not reach the Python AI Server. Is it running?", error);
+        }
+
+        // Save the Application AND the AI's math to the database
         await prisma.application.create({
             data: {
                 listingId: job!.id,
                 internId: currentIntern.id,
-                status: "Pending"
+                status: "Pending",
+                matchScore: finalMatchScore,
+                extractedSkills: aiExtractedSkills
             }
         })
 
         revalidatePath(`/jobs/${job!.id}`)
+        revalidatePath(`/my-applications`) // Ensure the student dashboard updates too!
     }
 
     const formatDate = (date: Date) => {
