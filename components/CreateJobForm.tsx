@@ -23,7 +23,7 @@ export default function CreateJobForm({ companyId }: { companyId: string }) {
 
         setIsGenerating(true)
         try {
-            const response = await fetch("http://127.0.0.1:8000/api/skills/extract", {
+            const response = await fetch("https://elevate-ai-engine.onrender.com/api/skills/extract", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ description })

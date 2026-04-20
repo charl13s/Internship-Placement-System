@@ -14,7 +14,7 @@ export async function updateApplicationCV(applicationId: string, newCvUrl: strin
         if (application.status !== "Pending") throw new Error("Cannot update closed applications");
 
         // Ping the Python AI Server
-        const aiResponse = await fetch("http://127.0.0.1:8000/api/applications/screen", {
+        const aiResponse = await fetch("https://elevate-ai-engine.onrender.com/api/applications/screen", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
