@@ -18,7 +18,10 @@ app = FastAPI()
 # 🚨 THIS OPENS THE GATES FOR NEXT.JS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # 🚨 This wildcard lets ANY website connect
+    allow_origins=[
+        "http://localhost:3000",
+        "https://internship-placement-system-chi.vercel.app" # 🚨 Your exact Vercel URL
+    ], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
